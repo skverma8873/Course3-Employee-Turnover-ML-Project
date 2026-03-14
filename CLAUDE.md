@@ -396,22 +396,80 @@ The `outputs/` directory is auto-created by the pipeline at runtime. Never manua
 
 ## Git Workflow
 
+### Continuous Commit Policy (MANDATORY)
+
+**Commit and push after every meaningful unit of work — no exceptions.**
+
+The purpose is to ensure no progress is ever lost and the repository always
+reflects the current state of the project. Do not batch up multiple unrelated
+changes into one large commit. Small, frequent, well-described commits are
+strongly preferred.
+
+**Trigger a commit + push after any of the following:**
+- A new source file is created or an existing one is modified
+- A bug is fixed
+- A test is added or updated
+- A documentation file (README, CLAUDE.md, analysis `.md`) is created or updated
+- A pipeline output (PNG, CSV) is generated or regenerated
+- A configuration file (`.gitignore`, `requirements.txt`) changes
+- Any architectural decision is recorded
+
+**The workflow for every change:**
+
 ```bat
-REM Stage specific files (never use git add -A blindly)
+REM 1. Stage specific files — never use git add -A blindly
 git add src/some_module.py tests/test_some_module.py
 
-REM Commit with conventional message
+REM 2. Commit with a clean conventional message
 git commit -m "feat: add salary band feature to preprocessor"
 
-REM Push to remote
+REM 3. Push immediately — do not let commits accumulate locally
 git push
 ```
+
+### Commit Message Format
+
+```
+<type>: <short description (imperative, max 72 chars)>
+
+<optional body — explain WHY, not what>
+```
+
+| Type | When to use |
+|------|-------------|
+| `feat` | New functionality or file |
+| `fix` | Bug fix |
+| `refactor` | Code restructure with no behaviour change |
+| `docs` | README, CLAUDE.md, analysis `.md`, comments |
+| `test` | New or updated tests |
+| `chore` | Dependencies, config, `.gitignore` |
+| `perf` | Performance improvement |
+
+**Good examples:**
+```
+feat: add K-Means cluster interpretation to employee_clusterer
+fix: correct SMOTE applied to full dataset instead of train-only
+docs: add layman analysis .md for roc_curves.png
+test: add edge case for zero-variance feature in preprocessor
+chore: pin imbalanced-learn to 0.12.3 in requirements.txt
+```
+
+**Bad examples (too vague — never use these):**
+```
+update files
+changes
+fix bug
+wip
+```
+
+### Repository Details
 
 **Branch:** `master`
 **Remote:** `https://github.com/skverma8873/Course3-Employee-Turnover-ML-Project`
 
-Do not commit:
-- `outputs/models/*.joblib` — binary model artefacts
-- `outputs/logs/` — log files
+### Do Not Commit
+
+- `outputs/models/*.joblib` — binary model artefacts (large, reproducible by rerunning pipeline)
+- `outputs/logs/` — rotating log files
 - `venv/` — virtual environment
 - `__pycache__/`, `.pytest_cache/`, `htmlcov/` — generated caches
