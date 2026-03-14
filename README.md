@@ -6,6 +6,8 @@ An end-to-end machine learning pipeline that predicts employee turnover,
 identifies at-risk employees, and recommends targeted HR retention strategies
 across four risk zones.
 
+**Repository:** https://github.com/skverma8873/Course3-Employee-Turnover-ML-Project
+
 ---
 
 ## Table of Contents
@@ -17,9 +19,10 @@ across four risk zones.
 5. [Running the Project](#5-running-the-project)
 6. [Running Tests](#6-running-tests)
 7. [Output Files](#7-output-files)
-8. [Logging](#8-logging)
-9. [Dataset Description](#9-dataset-description)
-10. [Risk Zone Strategy](#10-risk-zone-strategy)
+8. [Model Results](#8-model-results)
+9. [Logging](#9-logging)
+10. [Dataset Description](#10-dataset-description)
+11. [Risk Zone Strategy](#11-risk-zone-strategy)
 
 ---
 
@@ -33,6 +36,9 @@ validation, and produces actionable retention recommendations.
 **Business goal:** Minimise undetected employee departures (high recall) and
 prioritise HR interventions based on risk severity.
 
+**Selected model:** Random Forest — AUC 0.9957, Recall 97.9%, only 15 missed
+departures out of 714 in the test set.
+
 ---
 
 ## 2. Project Structure
@@ -43,7 +49,7 @@ Course3-Employee-Turnover-ML-Project/
 ├── CLAUDE.md                          # Project guide and coding conventions
 ├── README.md                          # This file
 ├── requirements.txt                   # Pinned Python dependencies
-├── .gitignore                         # Excludes outputs, venv, cache
+├── .gitignore                         # Excludes venv, models/, logs/, pycache
 │
 ├── Dataset/
 │   └── HR_comma_sep.csv               # Source HR data (14,999 rows, 10 cols)
@@ -64,9 +70,9 @@ Course3-Employee-Turnover-ML-Project/
 │   │
 │   ├── utils/                         # Shared infrastructure
 │   │   ├── __init__.py
-│   │   ├── exceptions.py              # Custom exception hierarchy
-│   │   ├── logger_config.py           # Centralised logging setup
-│   │   └── visualization_utils.py    # Shared matplotlib/seaborn helpers
+│   │   ├── exceptions.py              # Custom exception hierarchy (7 types)
+│   │   ├── logger_config.py           # Centralised rotating-file logging setup
+│   │   └── visualization_utils.py     # Shared matplotlib/seaborn helpers
 │   │
 │   ├── data_quality/                  # Step 1: Data validation
 │   │   ├── __init__.py
@@ -96,15 +102,15 @@ Course3-Employee-Turnover-ML-Project/
 ├── notebooks/
 │   └── employee_turnover_analysis.ipynb  # Interactive notebook (all 7 steps)
 │
-├── outputs/                           # Auto-created — all generated artifacts
-│   ├── plots/
-│   │   ├── eda/                       # correlation_heatmap.png, distributions, bar chart
-│   │   ├── clustering/                # kmeans_clusters.png
-│   │   ├── modeling/                  # roc_curves.png, confusion matrices, reports
-│   │   └── retention/                 # risk_zone_distribution.png
-│   ├── models/                        # Serialised model files (.joblib)
-│   ├── logs/                          # Rotating log files
-│   └── retention_report.csv          # Per-employee risk + strategy report
+├── outputs/                           # Auto-created at runtime
+│   ├── plots/                         # ← COMMITTED to git
+│   │   ├── eda/                       # PNG + .md analysis file per chart
+│   │   ├── clustering/                # PNG + .md analysis file
+│   │   ├── modeling/                  # PNG + .md analysis file per chart
+│   │   └── retention/                 # PNG + .md analysis file
+│   ├── retention_report.csv           # ← COMMITTED — per-employee risk report
+│   ├── models/                        # ← GITIGNORED — .joblib binary files
+│   └── logs/                          # ← GITIGNORED — rotating log files
 │
 └── tests/                             # pytest test suite
     ├── __init__.py
@@ -117,6 +123,10 @@ Course3-Employee-Turnover-ML-Project/
     └── test_retention.py
 ```
 
+> **Convention:** Every PNG in `outputs/plots/` has a co-located `.md` file of
+> the same base name containing a layman-friendly analysis, metric explanations,
+> and HR decision-making implications.
+
 ---
 
 ## 3. ML Pipeline — 7 Steps
@@ -127,9 +137,9 @@ Course3-Employee-Turnover-ML-Project/
 | 2 | `exploratory_analyzer.py` | Correlation heatmap; distribution plots (satisfaction, evaluation, hours); project count bar chart |
 | 3 | `employee_clusterer.py` | K-Means (k=3) on employees who left, using satisfaction_level + last_evaluation |
 | 4 | `data_preprocessor.py` | One-hot encode sales/salary; stratified 80:20 split (random_state=123); SMOTE upsampling |
-| 5 | `model_trainer.py` | Train Logistic Regression, Random Forest, Gradient Boosting with 5-fold CV |
-| 6 | `model_evaluator.py` | ROC/AUC curves, confusion matrices, classification reports; select best model by AUC |
-| 7 | `retention_advisor.py` | Predict turnover probabilities; categorise into 4 risk zones; generate retention strategies |
+| 5 | `model_trainer.py` | Train Logistic Regression, Random Forest, Gradient Boosting with 5-fold CV; serialise to `outputs/models/` |
+| 6 | `model_evaluator.py` | ROC/AUC curves, confusion matrices, classification reports; select best model by AUC; save `best_model.joblib` |
+| 7 | `retention_advisor.py` | Predict turnover probabilities; categorise into 4 risk zones; save `retention_report.csv` |
 
 ---
 
@@ -172,12 +182,13 @@ python src\pipeline.py --data Dataset\HR_comma_sep.csv --output outputs
 ```
 
 **All outputs are written to `outputs\`:**
-- `outputs\plots\eda\` — EDA visualisations
-- `outputs\plots\clustering\` — K-Means cluster plot
-- `outputs\plots\modeling\` — ROC curves, confusion matrices, classification reports
-- `outputs\plots\retention\` — Risk zone distribution chart
-- `outputs\retention_report.csv` — Per-employee risk zone and strategy
-- `outputs\logs\employee_turnover_YYYYMMDD.log` — Full execution log
+- `outputs\plots\eda\` — EDA visualisations + analysis `.md` files
+- `outputs\plots\clustering\` — K-Means cluster plot + analysis `.md`
+- `outputs\plots\modeling\` — ROC curves, confusion matrices, classification reports + analysis `.md` files
+- `outputs\plots\retention\` — Risk zone distribution chart + analysis `.md`
+- `outputs\retention_report.csv` — Per-employee risk zone and probability
+- `outputs\models\` — Serialised `.joblib` model files (gitignored)
+- `outputs\logs\employee_turnover_YYYYMMDD.log` — Full execution log (gitignored)
 
 ### Option B — Jupyter Notebook (Interactive)
 
@@ -230,22 +241,72 @@ pytest tests\test_data_quality.py -v
 
 ## 7. Output Files
 
-| File / Directory | Description |
-|------------------|-------------|
-| `outputs\plots\eda\correlation_heatmap.png` | Pearson correlation matrix heatmap |
-| `outputs\plots\eda\all_distributions.png` | Satisfaction, evaluation, hours distributions |
-| `outputs\plots\eda\project_count_bar.png` | Project count by left/stayed |
-| `outputs\plots\clustering\kmeans_clusters.png` | K-Means cluster scatter plot |
-| `outputs\plots\modeling\roc_curves.png` | ROC curves (all 3 models overlaid) |
-| `outputs\plots\modeling\confusion_matrix_*.png` | Per-model confusion matrix |
-| `outputs\plots\modeling\classification_report_*.png` | Per-model classification report |
-| `outputs\plots\retention\risk_zone_distribution.png` | Risk zone bar chart |
-| `outputs\retention_report.csv` | Per-employee probability, zone, actual label |
-| `outputs\logs\employee_turnover_YYYYMMDD.log` | Full pipeline execution log |
+### Plots and Analysis Files
+
+Each PNG has a co-located `.md` file with the same base name containing
+layman-friendly analysis and HR decision-making guidance.
+
+| PNG | Analysis File | Description |
+|-----|--------------|-------------|
+| `outputs\plots\eda\correlation_heatmap.png` | `correlation_heatmap.md` | Pearson correlation matrix — satisfaction_level is strongest predictor (−0.39) |
+| `outputs\plots\eda\all_distributions.png` | `all_distributions.md` | Satisfaction, evaluation, hours distributions — all bimodal, revealing hidden at-risk sub-groups |
+| `outputs\plots\eda\project_count_bar.png` | `project_count_bar.md` | Project count by left/stayed — U-shaped departure curve (2 projects and 6–7 projects both drive exits) |
+| `outputs\plots\clustering\kmeans_clusters.png` | `kmeans_clusters.md` | K-Means scatter plot — 3 departure archetypes: Burned-Out Stars, Poached Performers, Disengaged Low Performers |
+| `outputs\plots\modeling\roc_curves.png` | `roc_curves.md` | ROC curves all 3 models — RF AUC 0.9957, GB 0.9859, LR 0.8205 |
+| `outputs\plots\modeling\confusion_matrix_logistic_regression.png` | `confusion_matrix_logistic_regression.md` | LR confusion matrix — 199 missed leavers, 453 false alarms |
+| `outputs\plots\modeling\confusion_matrix_random_forest.png` | `confusion_matrix_random_forest.md` | RF confusion matrix — only 15 missed leavers, 14 false alarms |
+| `outputs\plots\modeling\confusion_matrix_gradient_boosting.png` | `confusion_matrix_gradient_boosting.md` | GB confusion matrix — 49 missed leavers, 56 false alarms |
+| `outputs\plots\modeling\classification_report_logistic_regression.png` | `classification_report_logistic_regression.md` | LR report — Recall 72.1%, Precision 53.2%, F1 0.612 |
+| `outputs\plots\modeling\classification_report_random_forest.png` | `classification_report_random_forest.md` | RF report — Recall 97.9%, Precision 98.0%, F1 0.980 |
+| `outputs\plots\modeling\classification_report_gradient_boosting.png` | `classification_report_gradient_boosting.md` | GB report — Recall 93.1%, Precision 92.2%, F1 0.927 |
+| `outputs\plots\retention\risk_zone_distribution.png` | `risk_zone_distribution.md` | Risk zone bar chart — 647 High-Risk (21.6%), 2,197 Safe (73.2%) |
+
+### Other Output Files
+
+| File | Description |
+|------|-------------|
+| `outputs\retention_report.csv` | Per-employee turnover probability, risk zone, and actual label |
+| `outputs\logs\employee_turnover_YYYYMMDD.log` | Full pipeline execution log (gitignored) |
+| `outputs\models\*.joblib` | Serialised model files — LR, RF, GB, best_model (gitignored) |
 
 ---
 
-## 8. Logging
+## 8. Model Results
+
+Results from pipeline execution on 3,000-employee test set (20% of 14,999 rows).
+
+### Model Comparison
+
+| Model | AUC | Recall (Left) | Precision (Left) | F1 (Left) | Missed Leavers | False Alarms |
+|-------|-----|--------------|-----------------|-----------|---------------|-------------|
+| Logistic Regression | 0.8205 | 72.1% | 53.2% | 0.612 | 199 | 453 |
+| Gradient Boosting | 0.9859 | 93.1% | 92.2% | 0.927 | 49 | 56 |
+| **Random Forest** ✓ | **0.9957** | **97.9%** | **98.0%** | **0.980** | **15** | **14** |
+
+**Selected model:** Random Forest (highest AUC, lowest missed departures).
+
+> **Why Recall over Precision?** Missing a real leaver (false negative) costs 6–9
+> months of salary in replacement. Incorrectly flagging a stayer (false positive)
+> costs a brief retention conversation. Random Forest reduces missed leavers by
+> 92% vs Logistic Regression.
+
+### Risk Zone Distribution (test set — 3,000 employees)
+
+| Zone | Employees | % | Turnover Probability |
+|------|-----------|---|---------------------|
+| Safe | 2,197 | 73.2% | < 20% |
+| Low-Risk | 96 | 3.2% | 20% – 60% |
+| Medium-Risk | 60 | 2.0% | 60% – 90% |
+| **High-Risk** | **647** | **21.6%** | **> 90%** |
+
+> **Key insight:** The distribution is bimodal — 73% are safe, 22% are critical,
+> with almost nothing in between. Employees are not drifting gradually; they cross
+> from stable to near-certain departure quickly, often triggered by a single event
+> (missed promotion, heavy workload, competitor offer).
+
+---
+
+## 9. Logging
 
 The project uses Python's standard `logging` module with a centralised
 configuration in `src/utils/logger_config.py`.
@@ -261,15 +322,15 @@ configuration in `src/utils/logger_config.py`.
 **View logs (Windows PowerShell):**
 ```powershell
 # View last 50 lines
-Get-Content outputs\logs\employee_turnover_20260314.log -Tail 50
+Get-Content outputs\logs\employee_turnover_20260315.log -Tail 50
 
 # Filter for errors only
-Select-String "ERROR|CRITICAL" outputs\logs\employee_turnover_20260314.log
+Select-String "ERROR|CRITICAL" outputs\logs\employee_turnover_20260315.log
 ```
 
 ---
 
-## 9. Dataset Description
+## 10. Dataset Description
 
 Source: `Dataset\HR_comma_sep.csv` — 14,999 employee records
 
@@ -286,9 +347,13 @@ Source: `Dataset\HR_comma_sep.csv` — 14,999 employee records
 | `sales` | string | 10 departments | Department name |
 | `salary` | string | low/medium/high | Salary bracket |
 
+**Class distribution:** ~76% stayed (left=0), ~24% left (left=1) — handled via SMOTE on training set only.
+
 ---
 
-## 10. Risk Zone Strategy
+## 11. Risk Zone Strategy
+
+### Strategy Table
 
 | Zone | Score Range | Priority | Key HR Actions |
 |------|-------------|----------|----------------|
@@ -296,6 +361,16 @@ Source: `Dataset\HR_comma_sep.csv` — 14,999 employee records
 | **Low-Risk** (Yellow) | 20% – 60% | Proactive | Stay interviews, career path clarification, skill development |
 | **Medium-Risk** (Orange) | 60% – 90% | Urgent | Manager 1:1, workload review, compensation benchmark, HR escalation |
 | **High-Risk** (Red) | > 90% | Critical | Senior leadership meeting, personalised retention package, weekly check-ins |
+
+### K-Means Departure Archetypes
+
+The clustering stage identifies three distinct profiles among employees who left — each requires a different retention response for current at-risk employees:
+
+| Archetype | Satisfaction | Evaluation | Why They Left | Retention Lever |
+|-----------|-------------|-----------|---------------|-----------------|
+| Burned-Out Stars | Very Low (~0.12) | Very High (~0.87) | Overwork, no recognition | Workload cap, immediate recognition, compensation review |
+| Poached Performers | High (~0.80) | Very High (~0.91) | Better external offer | Market salary benchmarking, fast-track promotion, equity |
+| Disengaged Low Performers | Moderate (~0.40) | Average (~0.52) | Lack of direction, limited prospects | Performance coaching, clearer role expectations, development plan |
 
 ---
 
