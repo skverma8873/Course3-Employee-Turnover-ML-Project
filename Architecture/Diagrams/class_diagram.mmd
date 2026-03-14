@@ -1,0 +1,129 @@
+classDiagram
+    direction TB
+
+    class DataQualityChecker {
+        -filepath: Path
+        -df: DataFrame
+        +__init__(filepath: str)
+        +load_data() DataFrame
+        +check_missing_values() DataFrame
+        +check_data_types() DataFrame
+        +check_duplicates() int
+        +check_value_ranges() dict
+        +generate_quality_report() dict
+    }
+
+    class ExploratoryAnalyzer {
+        -df: DataFrame
+        -viz_utils: VisualizationUtils
+        +__init__(df: DataFrame)
+        +plot_correlation_heatmap(save_path: str) None
+        +plot_distribution(column: str, title: str, save_path: str) None
+        +plot_all_distributions(save_path: str) None
+        +plot_project_count_bar(save_path: str) None
+        +compute_turnover_rate_by_feature(feature: str) DataFrame
+        +run_full_eda(output_dir: str) None
+    }
+
+    class EmployeeClusterer {
+        -df: DataFrame
+        -n_clusters: int
+        -cluster_data: DataFrame
+        -kmeans_model: KMeans
+        -labels: ndarray
+        +__init__(df: DataFrame, n_clusters: int)
+        +prepare_cluster_data() DataFrame
+        +fit_kmeans() KMeans
+        +plot_clusters(save_path: str) None
+        +get_cluster_summary() DataFrame
+        +interpret_clusters() dict
+        +run_clustering_pipeline() dict
+    }
+
+    class DataPreprocessor {
+        -df: DataFrame
+        -target_col: str
+        -test_size: float
+        -random_state: int
+        +__init__(df: DataFrame, target_col: str, test_size: float, random_state: int)
+        +separate_features_target() Tuple~DataFrame, Series~
+        +encode_categorical(X: DataFrame) DataFrame
+        +stratified_split(X: DataFrame, y: Series) Tuple~DataFrame, DataFrame, Series, Series~
+        +apply_smote(X_train: DataFrame, y_train: Series) Tuple~DataFrame, Series~
+        +run_preprocessing_pipeline() Tuple~DataFrame, DataFrame, Series, Series~
+        +get_class_distribution(y: Series) dict
+    }
+
+    class ModelTrainer {
+        -X_train: DataFrame
+        -y_train: Series
+        -cv_folds: int
+        -random_state: int
+        -models: dict
+        +__init__(X_train: DataFrame, y_train: Series, cv_folds: int, random_state: int)
+        +train_logistic_regression() LogisticRegression
+        +train_random_forest() RandomForestClassifier
+        +train_gradient_boosting() GradientBoostingClassifier
+        +get_cv_scores(model: object, scoring: str) ndarray
+        +plot_classification_report(model: object, X_test: DataFrame, y_test: Series, model_name: str, save_path: str) None
+        +train_all_models() dict
+    }
+
+    class ModelEvaluator {
+        -models: dict
+        -X_test: DataFrame
+        -y_test: Series
+        +__init__(models: dict, X_test: DataFrame, y_test: Series)
+        +compute_roc_auc(model_name: str) float
+        +plot_roc_curves(save_path: str) None
+        +compute_confusion_matrix(model_name: str) ndarray
+        +plot_confusion_matrix(model_name: str, save_path: str) None
+        +identify_best_model() Tuple~str, object~
+        +justify_recall_over_precision() str
+        +generate_evaluation_report() DataFrame
+    }
+
+    class RetentionAdvisor {
+        -best_model: object
+        -X_test: DataFrame
+        -y_test: Series
+        -probabilities: ndarray
+        -risk_zones: Series
+        +__init__(best_model: object, X_test: DataFrame, y_test: Series)
+        +predict_turnover_probabilities() ndarray
+        +categorize_risk_zones(probabilities: ndarray) Series
+        +get_zone_counts() dict
+        +suggest_strategies(zone: str) str
+        +generate_retention_report() DataFrame
+        +plot_zone_distribution(save_path: str) None
+    }
+
+    class VisualizationUtils {
+        -style: str
+        -figsize: Tuple~int, int~
+        +__init__(style: str, figsize: Tuple~int, int~)
+        +set_plot_style() None
+        +save_figure(fig: Figure, filepath: str) None
+        +create_heatmap(data: DataFrame, title: str, ax: Axes) Axes
+        +create_distribution_plot(data: Series, title: str, ax: Axes) Axes
+        +create_bar_plot(data: DataFrame, x: str, hue: str, title: str, ax: Axes) Axes
+    }
+
+    %% Relationships
+
+    DataQualityChecker ..> ExploratoryAnalyzer : "DataFrame flows to"
+    DataQualityChecker ..> EmployeeClusterer : "DataFrame flows to"
+    DataQualityChecker ..> DataPreprocessor : "DataFrame flows to"
+
+    ExploratoryAnalyzer --> VisualizationUtils : uses
+    EmployeeClusterer --> VisualizationUtils : uses
+    ModelTrainer --> VisualizationUtils : uses
+    ModelEvaluator --> VisualizationUtils : uses
+    RetentionAdvisor --> VisualizationUtils : uses
+
+    DataPreprocessor ..> ModelTrainer : "X_train, y_train"
+    DataPreprocessor ..> ModelEvaluator : "X_test, y_test"
+    DataPreprocessor ..> RetentionAdvisor : "X_test, y_test"
+
+    ModelTrainer ..> ModelEvaluator : "trained models dict"
+    ModelEvaluator ..> RetentionAdvisor : "best model"

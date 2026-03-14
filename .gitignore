@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+venv/
+env/
+.env/
+.venv/
+
+# Outputs — selectively committed
+outputs/models/          # binary .joblib files — large, excluded
+outputs/logs/            # rotating log files — excluded
+*.log
+
+# Keep plots (PNGs + analysis markdown) and retention report — DO commit
+# outputs/plots/ is intentionally NOT excluded
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
+# pytest
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Windows
+Thumbs.db
+desktop.ini

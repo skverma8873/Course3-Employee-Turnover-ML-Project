@@ -1,0 +1,343 @@
+%% ============================================================
+%% Sequence Diagram 1: Main Pipeline (End-to-End)
+%% ============================================================
+
+sequenceDiagram
+    participant NB as Notebook / Main
+    participant DQC as DataQualityChecker
+    participant EA as ExploratoryAnalyzer
+    participant EC as EmployeeClusterer
+    participant DP as DataPreprocessor
+    participant MT as ModelTrainer
+    participant ME as ModelEvaluator
+    participant RA as RetentionAdvisor
+
+    NB->>DQC: __init__(filepath)
+    NB->>DQC: load_data()
+    DQC-->>NB: df (DataFrame)
+    NB->>DQC: generate_quality_report()
+    DQC-->>NB: quality_report (dict)
+
+    NB->>EA: __init__(df)
+    NB->>EA: run_full_eda(output_dir)
+    EA-->>NB: plots saved
+
+    NB->>EC: __init__(df, n_clusters=3)
+    NB->>EC: run_clustering_pipeline()
+    EC-->>NB: cluster_results (dict)
+
+    NB->>DP: __init__(df, target_col="left", test_size=0.2, random_state=123)
+    NB->>DP: run_preprocessing_pipeline()
+    DP-->>NB: X_train_smote, X_test, y_train_smote, y_test
+
+    NB->>MT: __init__(X_train_smote, y_train_smote, cv_folds=5)
+    NB->>MT: train_all_models()
+    MT-->>NB: models (dict)
+
+    NB->>ME: __init__(models, X_test, y_test)
+    NB->>ME: plot_roc_curves(save_path)
+    NB->>ME: identify_best_model()
+    ME-->>NB: best_model_name, best_model
+    NB->>ME: generate_evaluation_report()
+    ME-->>NB: evaluation_df
+
+    NB->>RA: __init__(best_model, X_test, y_test)
+    NB->>RA: generate_retention_report()
+    RA-->>NB: retention_report_df
+    NB->>RA: plot_zone_distribution(save_path)
+    RA-->>NB: zone chart saved
+
+%% ============================================================
+%% Sequence Diagram 2: Data Quality Check
+%% ============================================================
+
+sequenceDiagram
+    participant NB as Notebook
+    participant DQC as DataQualityChecker
+    participant FS as FileSystem
+    participant PD as pandas
+
+    NB->>DQC: __init__(filepath="Dataset/HR_comma_sep.csv")
+    DQC->>FS: validate file exists
+    FS-->>DQC: file confirmed
+
+    NB->>DQC: load_data()
+    DQC->>PD: pd.read_csv(filepath)
+    PD-->>DQC: raw DataFrame (14999 rows, 10 cols)
+    DQC->>DQC: store as self.df
+    DQC-->>NB: df
+
+    NB->>DQC: generate_quality_report()
+
+    DQC->>DQC: check_missing_values()
+    Note right of DQC: df.isnull().sum() per column
+    DQC->>DQC: check_data_types()
+    Note right of DQC: df.dtypes
+    DQC->>DQC: check_duplicates()
+    Note right of DQC: df.duplicated().sum()
+    DQC->>DQC: check_value_ranges()
+    Note right of DQC: Validate satisfaction in [0,1],<br/>left in {0,1}, salary in {low,med,high}
+
+    DQC-->>NB: quality_report (dict with all results)
+
+%% ============================================================
+%% Sequence Diagram 3: Exploratory Data Analysis
+%% ============================================================
+
+sequenceDiagram
+    participant NB as Notebook
+    participant EA as ExploratoryAnalyzer
+    participant VU as VisualizationUtils
+    participant SNS as seaborn
+    participant MPL as matplotlib
+
+    NB->>EA: __init__(df)
+    EA->>EA: self.df = df.copy()
+    EA->>VU: __init__(style, figsize)
+    VU->>MPL: plt.style.use("seaborn-v0_8")
+
+    NB->>EA: run_full_eda(output_dir)
+
+    EA->>EA: plot_correlation_heatmap(save_path)
+    EA->>EA: df.corr() computes correlation matrix
+    EA->>VU: create_heatmap(corr_matrix, "Feature Correlation")
+    VU->>SNS: sns.heatmap(data, annot=True, cmap="coolwarm")
+    SNS-->>VU: heatmap axes
+    VU-->>EA: axes
+    EA->>VU: save_figure(fig, save_path)
+
+    EA->>EA: plot_all_distributions(save_path)
+    loop For each column in [satisfaction_level, last_evaluation, average_montly_hours]
+        EA->>EA: plot_distribution(column, title)
+        EA->>VU: create_distribution_plot(data, title)
+        VU->>SNS: sns.histplot(data, kde=True)
+        SNS-->>VU: dist axes
+        VU-->>EA: axes
+    end
+    EA->>VU: save_figure(fig, save_path)
+
+    EA->>EA: plot_project_count_bar(save_path)
+    EA->>VU: create_bar_plot(df, x="number_project", hue="left", title)
+    VU->>SNS: sns.countplot(data, x, hue)
+    SNS-->>VU: bar axes
+    VU-->>EA: axes
+    EA->>VU: save_figure(fig, save_path)
+
+    EA->>EA: compute_turnover_rate_by_feature("sales")
+    Note right of EA: groupby + mean of left
+    EA-->>NB: EDA complete, plots saved
+
+%% ============================================================
+%% Sequence Diagram 4: Clustering
+%% ============================================================
+
+sequenceDiagram
+    participant NB as Notebook
+    participant EC as EmployeeClusterer
+    participant KM as KMeans
+    participant VU as VisualizationUtils
+
+    NB->>EC: __init__(df, n_clusters=3)
+    EC->>EC: self.df = df.copy()
+
+    NB->>EC: run_clustering_pipeline()
+
+    EC->>EC: prepare_cluster_data()
+    Note right of EC: Filter df[df.left == 1]<br/>Select satisfaction_level, last_evaluation
+    EC-->>EC: cluster_data (approx 3571 rows, 2 cols)
+
+    EC->>EC: fit_kmeans()
+    EC->>KM: KMeans(n_clusters=3, random_state=123)
+    EC->>KM: fit(cluster_data)
+    KM-->>EC: fitted model + labels
+    EC->>EC: store self.kmeans_model, self.labels
+
+    EC->>EC: plot_clusters(save_path)
+    EC->>VU: create scatter plot
+    Note right of EC: Color by cluster label<br/>Mark centroids
+    VU-->>EC: scatter plot axes
+    EC->>VU: save_figure(fig, save_path)
+
+    EC->>EC: get_cluster_summary()
+    Note right of EC: groupby cluster label<br/>compute mean satisfaction, mean evaluation, count
+    EC-->>EC: summary DataFrame
+
+    EC->>EC: interpret_clusters()
+    Note right of EC: Map cluster stats to descriptions:<br/>Cluster A: "Burned-out high performers"<br/>Cluster B: "Disengaged low performers"<br/>Cluster C: "Overworked mid-performers"
+    EC-->>EC: interpretations dict
+
+    EC-->>NB: {summary, interpretations, model}
+
+%% ============================================================
+%% Sequence Diagram 5: Preprocessing and SMOTE
+%% ============================================================
+
+sequenceDiagram
+    participant NB as Notebook
+    participant DP as DataPreprocessor
+    participant PD as pandas
+    participant SK as sklearn
+    participant SM as SMOTE
+
+    NB->>DP: __init__(df, target_col="left", test_size=0.2, random_state=123)
+    DP->>DP: self.df = df.copy()
+
+    NB->>DP: run_preprocessing_pipeline()
+
+    DP->>DP: separate_features_target()
+    Note right of DP: X = df.drop("left")<br/>y = df["left"]
+    DP-->>DP: X (14999, 9), y (14999,)
+
+    DP->>DP: encode_categorical(X)
+    DP->>PD: pd.get_dummies(X, columns=["sales", "salary"])
+    Note right of PD: sales -> 10 binary cols<br/>salary -> 3 binary cols<br/>Original 2 cols dropped
+    PD-->>DP: X_encoded (14999, 20+)
+
+    DP->>DP: get_class_distribution(y)
+    Note right of DP: Before split: {0: ~11428, 1: ~3571}
+
+    DP->>DP: stratified_split(X_encoded, y)
+    DP->>SK: train_test_split(X, y, test_size=0.2, stratify=y, random_state=123)
+    SK-->>DP: X_train, X_test, y_train, y_test
+    Note right of DP: Train: ~11999 rows<br/>Test: ~3000 rows<br/>Class ratio preserved
+
+    DP->>DP: get_class_distribution(y_train)
+    Note right of DP: Before SMOTE: imbalanced
+
+    DP->>DP: apply_smote(X_train, y_train)
+    DP->>SM: SMOTE(random_state=123)
+    DP->>SM: fit_resample(X_train, y_train)
+    SM-->>DP: X_train_smote, y_train_smote
+    Note right of DP: After SMOTE: balanced 50/50
+
+    DP->>DP: get_class_distribution(y_train_smote)
+    Note right of DP: After SMOTE: {0: ~9142, 1: ~9142}
+
+    DP-->>NB: X_train_smote, X_test, y_train_smote, y_test
+
+%% ============================================================
+%% Sequence Diagram 6: Model Training and Evaluation
+%% ============================================================
+
+sequenceDiagram
+    participant NB as Notebook
+    participant MT as ModelTrainer
+    participant ME as ModelEvaluator
+    participant SK as sklearn
+    participant VU as VisualizationUtils
+
+    NB->>MT: __init__(X_train_smote, y_train_smote, cv_folds=5, random_state=123)
+
+    NB->>MT: train_all_models()
+
+    MT->>MT: train_logistic_regression()
+    MT->>SK: LogisticRegression(random_state=123, max_iter=1000)
+    MT->>SK: fit(X_train, y_train)
+    MT->>SK: cross_val_score(model, X_train, y_train, cv=5, scoring="f1")
+    SK-->>MT: cv_scores_lr
+    Note right of MT: Store in self.models["Logistic Regression"]
+
+    MT->>MT: train_random_forest()
+    MT->>SK: RandomForestClassifier(random_state=123, n_estimators=100)
+    MT->>SK: fit(X_train, y_train)
+    MT->>SK: cross_val_score(model, X_train, y_train, cv=5, scoring="f1")
+    SK-->>MT: cv_scores_rf
+    Note right of MT: Store in self.models["Random Forest"]
+
+    MT->>MT: train_gradient_boosting()
+    MT->>SK: GradientBoostingClassifier(random_state=123, n_estimators=100)
+    MT->>SK: fit(X_train, y_train)
+    MT->>SK: cross_val_score(model, X_train, y_train, cv=5, scoring="f1")
+    SK-->>MT: cv_scores_gb
+    Note right of MT: Store in self.models["Gradient Boosting"]
+
+    MT-->>NB: models dict (3 fitted models)
+
+    loop For each model
+        NB->>MT: plot_classification_report(model, X_test, y_test, name, save_path)
+        MT->>SK: model.predict(X_test)
+        MT->>SK: classification_report(y_test, preds, output_dict=True)
+        MT->>VU: create_heatmap(report_df, title)
+        VU-->>MT: heatmap axes
+        MT->>VU: save_figure(fig, save_path)
+    end
+
+    NB->>ME: __init__(models, X_test, y_test)
+
+    NB->>ME: plot_roc_curves(save_path)
+    loop For each model in models
+        ME->>SK: model.predict_proba(X_test)
+        ME->>SK: roc_curve(y_test, probabilities[:, 1])
+        SK-->>ME: fpr, tpr, thresholds
+        ME->>SK: roc_auc_score(y_test, probabilities[:, 1])
+        SK-->>ME: auc_score
+    end
+    ME->>VU: plot all ROC curves on single figure
+    ME->>VU: save_figure(fig, save_path)
+
+    loop For each model in models
+        NB->>ME: plot_confusion_matrix(model_name, save_path)
+        ME->>SK: model.predict(X_test)
+        ME->>SK: confusion_matrix(y_test, predictions)
+        SK-->>ME: cm (2x2 array)
+        ME->>VU: create_heatmap(cm, title)
+        VU-->>ME: heatmap axes
+        ME->>VU: save_figure(fig, save_path)
+    end
+
+    NB->>ME: identify_best_model()
+    Note right of ME: Compare AUC scores across all models
+    ME-->>NB: (best_name, best_model)
+
+    NB->>ME: justify_recall_over_precision()
+    ME-->>NB: justification text
+
+    NB->>ME: generate_evaluation_report()
+    ME-->>NB: evaluation_df (all models, all metrics)
+
+%% ============================================================
+%% Sequence Diagram 7: Retention Strategy
+%% ============================================================
+
+sequenceDiagram
+    participant NB as Notebook
+    participant RA as RetentionAdvisor
+    participant MDL as Best Model
+    participant VU as VisualizationUtils
+
+    NB->>RA: __init__(best_model, X_test, y_test)
+
+    NB->>RA: predict_turnover_probabilities()
+    RA->>MDL: predict_proba(X_test)
+    MDL-->>RA: probabilities (2D array)
+    RA->>RA: extract column 1 (probability of left=1)
+    RA->>RA: store self.probabilities
+    RA-->>NB: probabilities (1D array)
+
+    NB->>RA: categorize_risk_zones(probabilities)
+    Note right of RA: p < 0.20 -> "Safe"<br/>0.20 <= p < 0.60 -> "Low-Risk"<br/>0.60 <= p < 0.90 -> "Medium-Risk"<br/>p >= 0.90 -> "High-Risk"
+    RA->>RA: store self.risk_zones
+    RA-->>NB: risk_zones (Series)
+
+    NB->>RA: get_zone_counts()
+    RA->>RA: self.risk_zones.value_counts()
+    RA-->>NB: zone_counts (dict)
+
+    NB->>RA: generate_retention_report()
+    RA->>RA: For each employee in X_test
+    loop For each employee
+        RA->>RA: get probability
+        RA->>RA: get risk zone
+        RA->>RA: suggest_strategies(zone)
+        Note right of RA: Safe: Monitor and recognize<br/>Low-Risk: Engage and develop<br/>Medium-Risk: Intervene and retain<br/>High-Risk: Immediate action + contingency
+    end
+    RA->>RA: compile into DataFrame
+    Note right of RA: Columns: employee_index,<br/>turnover_probability,<br/>risk_zone, actual_outcome,<br/>recommended_strategy
+    RA-->>NB: retention_report_df
+
+    NB->>RA: plot_zone_distribution(save_path)
+    RA->>VU: create_bar_plot with zone counts
+    Note right of VU: Colors: green, yellow, orange, red<br/>Ordered: Safe, Low-Risk, Medium-Risk, High-Risk
+    VU-->>RA: bar chart axes
+    RA->>VU: save_figure(fig, save_path)
+    RA-->>NB: zone distribution chart saved
