@@ -23,6 +23,7 @@ across four risk zones.
 9. [Logging](#9-logging)
 10. [Dataset Description](#10-dataset-description)
 11. [Risk Zone Strategy](#11-risk-zone-strategy)
+12. [Git Workflow & Contributing](#12-git-workflow--contributing)
 
 ---
 
@@ -145,20 +146,36 @@ Course3-Employee-Turnover-ML-Project/
 
 ## 4. Setup Instructions (Windows)
 
-```bat
-REM Step 1: Navigate to project directory
-cd "D:\SaurabhVerma\COE\self\simpli\project\Course-03-MachineLearning\Course3-Employee-Turnover-ML-Project"
+### Option A — Clone from GitHub (Recommended for new setup)
 
-REM Step 2: Create virtual environment
+```bat
+REM Clone the repository
+git clone https://github.com/skverma8873/Course3-Employee-Turnover-ML-Project.git
+
+REM Navigate into the project directory
+cd Course3-Employee-Turnover-ML-Project
+```
+
+### Option B — Work in existing local directory
+
+```bat
+REM Navigate to project directory
+cd "D:\SaurabhVerma\COE\self\simpli\project\Course-03-MachineLearning\Course3-Employee-Turnover-ML-Project"
+```
+
+### Common steps after cloning or navigating
+
+```bat
+REM Step 1: Create virtual environment
 python -m venv venv
 
-REM Step 3: Activate virtual environment (Windows Command Prompt)
+REM Step 2: Activate virtual environment (Windows Command Prompt)
 venv\Scripts\activate.bat
 
 REM  OR for Windows PowerShell:
 REM  venv\Scripts\Activate.ps1
 
-REM Step 4: Install dependencies
+REM Step 3: Install dependencies
 pip install -r requirements.txt
 ```
 
@@ -371,6 +388,84 @@ The clustering stage identifies three distinct profiles among employees who left
 | Burned-Out Stars | Very Low (~0.12) | Very High (~0.87) | Overwork, no recognition | Workload cap, immediate recognition, compensation review |
 | Poached Performers | High (~0.80) | Very High (~0.91) | Better external offer | Market salary benchmarking, fast-track promotion, equity |
 | Disengaged Low Performers | Moderate (~0.40) | Average (~0.52) | Lack of direction, limited prospects | Performance coaching, clearer role expectations, development plan |
+
+---
+
+---
+
+## 12. Git Workflow & Contributing
+
+### Repository
+
+| Detail | Value |
+|--------|-------|
+| URL | https://github.com/skverma8873/Course3-Employee-Turnover-ML-Project |
+| Branch | `master` |
+| Visibility | Public |
+
+### Commit Cadence
+
+Commits are made **after every meaningful unit of work** — not batched up at the
+end of a session. This ensures the repository always reflects the current project
+state and no progress is ever lost. Each commit is self-contained and describes
+exactly what changed and why.
+
+### Commit Message Convention
+
+All commits follow the **Conventional Commits** format:
+
+```
+<type>: <short description in imperative mood, max 72 chars>
+
+<optional body — explain WHY the change was made>
+```
+
+| Type | Meaning | Example |
+|------|---------|---------|
+| `feat` | New file or functionality | `feat: add K-Means cluster labelling to employee_clusterer` |
+| `fix` | Bug fix | `fix: apply SMOTE to training set only, not full dataset` |
+| `refactor` | Code restructure, no behaviour change | `refactor: extract plot saving into VisualizationUtils` |
+| `docs` | README, CLAUDE.md, analysis `.md` files, comments | `docs: add layman analysis .md for roc_curves.png` |
+| `test` | New or updated tests | `test: add edge case for zero-variance feature in preprocessor` |
+| `chore` | Dependencies, config, `.gitignore` | `chore: pin imbalanced-learn to 0.12.3` |
+| `perf` | Performance improvement | `perf: cache StandardScaler fit on training data` |
+
+### What Is Tracked in This Repository
+
+| Path | Committed? | Reason |
+|------|-----------|--------|
+| `src/` | Yes | All source code |
+| `tests/` | Yes | Full test suite |
+| `outputs/plots/**/*.png` | Yes | Generated visualisations — versioned for reference |
+| `outputs/plots/**/*.md` | Yes | Analysis files co-located with every PNG |
+| `outputs/retention_report.csv` | Yes | Per-employee risk report from last pipeline run |
+| `Architecture/` | Yes | Architecture documents and Mermaid diagrams |
+| `notebooks/` | Yes | Interactive Jupyter notebook |
+| `Dataset/HR_comma_sep.csv` | Yes | Source data |
+| `requirements.txt` | Yes | Pinned dependencies |
+| `outputs/models/*.joblib` | **No** | Binary model files — large, reproducible by rerunning pipeline |
+| `outputs/logs/` | **No** | Rotating log files — runtime artefacts |
+| `venv/` | **No** | Virtual environment — recreate via `pip install -r requirements.txt` |
+
+> **Note for reviewers:** The `outputs/plots/` directory is intentionally
+> committed. Each PNG has a paired `.md` analysis file explaining the chart,
+> metric values, and HR implications in plain English. These files are part of
+> the project deliverable, not just build artefacts.
+
+### Staying Up to Date
+
+If you have already cloned the repository and want to pull the latest changes:
+
+```bat
+git pull origin master
+```
+
+If new dependencies have been added since your last pull:
+
+```bat
+venv\Scripts\activate.bat
+pip install -r requirements.txt
+```
 
 ---
 
