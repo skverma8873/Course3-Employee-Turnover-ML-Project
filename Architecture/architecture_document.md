@@ -13,6 +13,9 @@
 7. [Data Flow Diagram](#7-data-flow-diagram)
 8. [Evaluation Metrics Justification](#8-evaluation-metrics-justification)
 9. [Retention Strategy Framework](#9-retention-strategy-framework)
+10. [Logging Architecture](#10-logging-architecture)
+11. [Exception Handling Architecture](#11-exception-handling-architecture)
+12. [Notebook Architecture](#12-notebook-architecture)
 
 ---
 
@@ -1074,3 +1077,244 @@ except Exception as exc:
 ```
 
 **Exit codes:** 0 = success, 1 = domain error, 2 = unexpected error
+
+---
+
+## 12. Notebook Architecture
+
+This section documents the two-tier notebook system: the **interactive analysis
+notebook** in `notebooks/` and the **module-level reference notebooks** co-located
+with every Python source file in `src/`.
+
+---
+
+### 12.1 Overview
+
+The project exposes all pipeline logic through two complementary notebook layers:
+
+| Layer | Location | Count | Purpose |
+|-------|----------|-------|---------|
+| Interactive pipeline notebook | `notebooks/` | 1 | End-to-end walkthrough; runs the full 7-step ML pipeline with inline outputs |
+| Module reference notebooks | `src/**/*.ipynb` | 19 | One notebook per `.py` file; documents every class and method with Javadoc-style cells |
+
+Both layers share the same Jupyter kernel (`employee-turnover-venv`) and are kept
+in sync with their corresponding Python source files.
+
+---
+
+### 12.2 Jupyter Kernel
+
+A dedicated kernel is registered so that all notebooks resolve imports from the
+project's virtual environment without manual path manipulation.
+
+| Property | Value |
+|----------|-------|
+| Kernel name | `employee-turnover-venv` |
+| Display name | `Employee Turnover (venv)` |
+| Registration path | `C:\Users\<user>\AppData\Roaming\jupyter\kernels\employee-turnover-venv\` |
+| Python binary | `venv\Scripts\python.exe` |
+
+**Register the kernel (run once after creating the venv):**
+
+```bat
+venv\Scripts\python.exe -m ipykernel install --user ^
+    --name employee-turnover-venv ^
+    --display-name "Employee Turnover (venv)"
+```
+
+**Verify registration:**
+
+```bat
+venv\Scripts\python.exe -m jupyter kernelspec list
+```
+
+---
+
+### 12.3 Interactive Pipeline Notebook
+
+**File:** `notebooks/employee_turnover_analysis.ipynb`
+
+This is the primary deliverable notebook. It executes the complete 7-step ML
+pipeline interactively, displaying all outputs (plots, tables, metrics) inline.
+
+#### Cell Structure
+
+The notebook uses a three-layer cell hierarchy:
+
+```
+[Step header markdown]      ← Section title, context, and expected outputs
+    [Cell documentation]    ← Per-cell markdown: Purpose, Inputs, Outputs, Step-by-step
+    [Code cell]             ← Executable implementation
+```
+
+After enhancement, the notebook contains **67 cells** broken down as:
+
+| Cell type | Count | Role |
+|-----------|-------|------|
+| Step header markdown | 7 | One per pipeline stage (## Step N headings) |
+| Cell documentation markdown | 29 | Javadoc-style documentation before every code cell |
+| Code cells | 30 | Executable pipeline implementation |
+| Summary markdown | 1 | Key findings and conclusions |
+
+#### Cell Documentation Standard
+
+Every code cell is preceded by a markdown cell with the following sections:
+
+| Section | Content |
+|---------|---------|
+| **Purpose** | Plain-English explanation of why this cell exists |
+| **What this cell does — step by step** | Numbered walkthrough of each action in layman terms |
+| **Inputs table** | Variable name, type, and description of every input consumed |
+| **Outputs / Variables created table** | Variable name, type, and description of every output produced |
+| **Key insight / Expected outcome** | What to look for in the cell output |
+
+Additional context sections are added where applicable:
+
+- **Model training cells** — rationale for each algorithm choice
+- **Confusion matrix cell** — labelled 2×2 table explaining TN / FP / FN / TP
+- **Evaluation report cell** — metric formula definitions in plain English
+- **Risk zone cell** — threshold boundaries and HR priority per zone
+- **Retention strategies cell** — intervention playbook summary table
+
+#### Notebook Cell Map
+
+| Cell range | Pipeline step | Key variables produced |
+|-----------|--------------|----------------------|
+| 00 | Overview markdown | — |
+| 01–02 | Environment setup & imports | `df`, `logger`, `DATA_PATH`, `OUTPUT_DIR` |
+| 03–13 | Step 1–2: Data quality + EDA | `checker`, `df`, `analyzer`, `missing`, `ranges` |
+| 14–24 | Step 3–4: Clustering + preprocessing | `clusterer`, `results`, `X_train`, `X_test`, `y_train`, `y_test` |
+| 25–41 | Step 5: Model training | `trainer`, `models` + 3 `.joblib` files |
+| 42–54 | Step 6: Model evaluation | `evaluator`, `eval_report`, `best_model`, `best_name` |
+| 55–65 | Step 7: Retention strategies | `advisor`, `retention_report`, `probs` + CSV |
+| 66 | Summary & conclusions | — |
+
+---
+
+### 12.4 Module Reference Notebooks (`src/**/*.ipynb`)
+
+One `.ipynb` file is generated alongside every `.py` file in `src/`. These
+notebooks serve as interactive class and method reference documentation — the
+equivalent of Javadoc rendered in a readable, runnable format.
+
+#### Full Notebook Inventory
+
+| # | Notebook | Folder | Pipeline role |
+|---|----------|--------|---------------|
+| 1 | `pipeline.ipynb` | `src/` | End-to-end CLI orchestrator |
+| 2 | `__init__.ipynb` | `src/` | Package init — version metadata |
+| 3 | `data_quality_checker.ipynb` | `src/data_quality/` | Stage 1 — data validation |
+| 4 | `__init__.ipynb` | `src/data_quality/` | Package init |
+| 5 | `exploratory_analyzer.ipynb` | `src/eda/` | Stage 2 — EDA visualisations |
+| 6 | `__init__.ipynb` | `src/eda/` | Package init |
+| 7 | `employee_clusterer.ipynb` | `src/clustering/` | Stage 3 — K-Means clustering |
+| 8 | `__init__.ipynb` | `src/clustering/` | Package init |
+| 9 | `data_preprocessor.ipynb` | `src/preprocessing/` | Stage 4 — encoding, split, SMOTE |
+| 10 | `__init__.ipynb` | `src/preprocessing/` | Package init |
+| 11 | `model_trainer.ipynb` | `src/modeling/` | Stage 5 — model training |
+| 12 | `model_evaluator.ipynb` | `src/modeling/` | Stage 6 — evaluation & best model |
+| 13 | `__init__.ipynb` | `src/modeling/` | Package init |
+| 14 | `retention_advisor.ipynb` | `src/retention/` | Stage 7 — risk zones & strategies |
+| 15 | `__init__.ipynb` | `src/retention/` | Package init |
+| 16 | `exceptions.ipynb` | `src/utils/` | Custom exception hierarchy |
+| 17 | `logger_config.ipynb` | `src/utils/` | Centralised logging setup |
+| 18 | `visualization_utils.ipynb` | `src/utils/` | Shared matplotlib/seaborn helpers |
+| 19 | `__init__.ipynb` | `src/utils/` | Package init |
+
+#### Cell Structure per Module Notebook
+
+Each module notebook follows this structure:
+
+```
+[Module title + file path markdown]
+[Imports & Module-Level Constants markdown + code cell]
+    [Class markdown]            ← Rich class-level documentation
+    [Class header code cell]    ← class Foo: signature + __init__
+        [Method markdown]       ← Per-method Javadoc cell
+        [Method code cell]      ← def method(): implementation
+        ... (repeated for each method)
+```
+
+For `exceptions.py`, each exception class gets its own markdown + code cell pair
+since exception classes have no public methods.
+
+For `pipeline.py`, each top-level function gets its own markdown + code cell pair
+since there is no class wrapper.
+
+#### Class-Level Documentation Standard
+
+Every class markdown cell includes:
+
+| Section | Content |
+|---------|---------|
+| **Class name heading** | `## Class: \`ClassName\`` |
+| **Purpose description** | What the class is responsible for in the pipeline |
+| **Constructor Arguments table** | Argument name, type, description |
+| **Instance Attributes table** | Attribute name, type, what state it holds |
+| **Public Methods at a Glance table** | Every public method with a one-line summary |
+| **Usage Example** | `>>> obj = ClassName(...)` code snippet from docstring |
+
+#### Method-Level Documentation Standard
+
+Every method markdown cell includes:
+
+| Section | Content |
+|---------|---------|
+| **Method heading** | `### \`ClassName.\`\`method_name()\`` |
+| **Purpose** | What the method does in plain English |
+| **Arguments table** | Parameter name, type, full description |
+| **Returns** | What the method gives back (type + description) |
+| **Raises** | Exception class and the condition that triggers it |
+| **Example** | Code sample (where present in the docstring) |
+
+---
+
+### 12.5 Notebook Generation and Maintenance
+
+The module reference notebooks are generated programmatically from the Python
+source files using AST (Abstract Syntax Tree) parsing. This ensures the notebook
+documentation is always structurally consistent with the source code.
+
+#### Generation Process
+
+1. The AST parser traverses each `.py` file to find module-level items:
+   imports, constants, class definitions, and top-level functions.
+2. For each class, the `__init__` docstring is parsed using a Google-style
+   docstring parser to extract `Args:`, `Attributes:`, `Returns:`, `Raises:`,
+   and `Example:` sections.
+3. The class header (signature up to the first method) is placed in a code cell
+   immediately following the class markdown cell.
+4. Each method body is placed in its own code cell, preceded by its method
+   markdown cell.
+5. The notebook JSON is written with kernel metadata pointing to
+   `employee-turnover-venv`.
+
+#### Keeping Notebooks in Sync
+
+When a `.py` source file is modified (new method added, docstring updated,
+class restructured), re-run the generation script to regenerate all notebooks:
+
+```bat
+venv\Scripts\activate.bat
+python _enhance_notebooks.py
+```
+
+> The generator is idempotent — regenerating overwrites existing notebooks
+> without duplicating cells.
+
+#### Git Tracking Policy
+
+Module reference notebooks (`.ipynb` files in `src/`) are **committed to git**
+because they serve as living documentation. They follow the same commit
+conventions as source files:
+
+```
+docs: regenerate src notebooks after DataPreprocessor refactor
+feat: add src/modeling/model_evaluator.ipynb for new evaluation methods
+```
+
+The main notebook (`notebooks/employee_turnover_analysis.ipynb`) is also
+committed to git as it is a primary project deliverable.
+
+**Not committed:** Notebook checkpoint files (`.ipynb_checkpoints/`) are
+excluded via `.gitignore`.
